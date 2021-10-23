@@ -4,6 +4,13 @@ from rich.progress import track
 from rich.pretty import pprint
 from rich.prompt import Prompt, IntPrompt
 from rich.prompt import Confirm
+import re
+
+
+def sorted_alphanumeric(data):
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [convert(c) for c in re.split("([0-9]+)", key)]
+    return sorted(data, key=alphanum_key)
 
 
 def get_info():
@@ -16,11 +23,13 @@ def get_info():
 
 
 def offline(series_name, season, episode, folder):
+    file_list = sorted_alphanumeric(os.listdir(folder))
     # Confirm and continue
-    pprint(os.listdir(folder), expand_all=True)
+    print("[bold]Files Found[/bold]")
+    pprint(file_list, expand_all=True)
     if Confirm.ask("Correct?", default=True):
         print()
-        for file in track(os.listdir(folder), description="Processing"):
+        for file in track(file_list, description="Processing"):
             # construct current name using file name and path
             old_name = os.path.join(folder, file)
 
@@ -28,7 +37,7 @@ def offline(series_name, season, episode, folder):
                 # skip directories
                 continue
 
-            # get file name without extension
+            # get file extension without name
             file_extention = os.path.splitext(file)[1]
 
             # Adding the new name with extension
@@ -36,14 +45,18 @@ def offline(series_name, season, episode, folder):
             # construct full file path
             new_name = os.path.join(folder, new_base)
 
-            # Renaming the file
-            os.rename(old_name, new_name)
-            episode += 1
+            try:
+                # renaming file
+                os.rename(old_name, new_name)
+            except FileExistsError:
+                # printing error for already exists file
+                print(f"[magenta]File with {new_base} already exists![/magenta]")
+            finally:
+                episode += 1
 
         # verify the result
-        res = os.listdir(folder)
         pprint("Done!")
-        pprint(res, expand_all=True)
+        pprint(sorted_alphanumeric(os.listdir(folder)), expand_all=True)
         input("Enter to Exit")
     else:
         pprint("Bye!")
@@ -53,8 +66,10 @@ def offline(series_name, season, episode, folder):
 def online(series_name, season, episode, folder):
     import requests
 
+    file_list = sorted_alphanumeric(os.listdir(folder))
     # Confirm and continue
-    pprint(os.listdir(folder), expand_all=True)
+    print("[bold]Files Found[/bold]")
+    pprint(file_list, expand_all=True)
     if Confirm.ask("Correct?", default=True):
         print()
         search = requests.get(
@@ -70,7 +85,8 @@ def online(series_name, season, episode, folder):
             print(f'[bold]Type:[/bold] [cyan]{search.json()["type"]}[/cyan]')
             print(f'[bold]Lang:[/bold] [cyan]{search.json()["language"]}[/cyan]')
             if Confirm.ask("Correct?", default=True):
-                for file in track(os.listdir(folder), description="Processing"):
+                print()
+                for file in track(file_list, description="Processing"):
                     old_name = os.path.join(folder, file)
                     if os.path.isdir(old_name):
                         # skip directories
@@ -83,27 +99,31 @@ def online(series_name, season, episode, folder):
                     if episode_info.status_code == 200:
                         episode_name = episode_info.json()["name"]
 
-                        # get file extension
+                        # get file extension without name
                         file_extention = os.path.splitext(file)[1]
 
                         # Adding the new name with extension
-                        new_base = (
-                            f"S{season}E{str(episode)} - {episode_name}{file_extention}"
-                        )
+                        new_base = f"{str(episode)} - {episode_name}{file_extention}"
                         # construct full file path
                         new_name = os.path.join(folder, new_base)
 
-                        # Renaming the file
-                        os.rename(old_name, new_name)
-                        episode += 1
+                        try:
+                            # Renaming the file
+                            os.rename(old_name, new_name)
+                        except FileExistsError:
+                            # printing error for already exists file
+                            print(
+                                f"[magenta]File with {new_base} already exists![/magenta]"
+                            )
+                        finally:
+                            episode += 1
 
                     else:
                         print("[bold red]Episode Not Found![/bold red]")
 
                 # verify the result
-                res = os.listdir(folder)
                 pprint("Done!")
-                pprint(res, expand_all=True)
+                pprint(sorted_alphanumeric(os.listdir(folder)), expand_all=True)
                 input("Enter to Exit")
         else:
             print("[bold red]Not Found![/bold red]")
