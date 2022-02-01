@@ -5,6 +5,9 @@ from rich.pretty import pprint
 from rich.prompt import Prompt, IntPrompt
 from rich.prompt import Confirm
 import re
+import promptlib
+
+prompter = promptlib.Files()
 
 
 def sorted_alphanumeric(data):
@@ -14,16 +17,16 @@ def sorted_alphanumeric(data):
 
 
 def get_info():
-    folder_name = input("Enter Folder: ")
-    series_name = Prompt.ask("Name of Series", default=folder_name)
+    print("Select Folder:")
+    folder_location = prompter.dir()
+    series_name = Prompt.ask("Name of Series", default=folder_location)
     season = IntPrompt.ask("Season Number")
     episode = IntPrompt.ask("Episode Number", default=1)
-    folder = f"./{folder_name}"
-    return series_name, season, episode, folder
+    return series_name, season, episode, folder_location
 
 
-def offline(series_name, season, episode, folder):
-    file_list = sorted_alphanumeric(os.listdir(folder))
+def offline(series_name, season, episode, folder_location):
+    file_list = sorted_alphanumeric(os.listdir(folder_location))
     # Confirm and continue
     print("[bold]Files Found[/bold]")
     pprint(file_list, expand_all=True)
@@ -31,7 +34,7 @@ def offline(series_name, season, episode, folder):
         print()
         for file in track(file_list, description="Processing"):
             # construct current name using file name and path
-            old_name = os.path.join(folder, file)
+            old_name = os.path.join(folder_location, file)
 
             if os.path.isdir(old_name):
                 # skip directories
@@ -43,7 +46,7 @@ def offline(series_name, season, episode, folder):
             # Adding the new name with extension
             new_base = f"{series_name} S{season}E{str(episode)+file_extention}"
             # construct full file path
-            new_name = os.path.join(folder, new_base)
+            new_name = os.path.join(folder_location, new_base)
 
             try:
                 # renaming file
@@ -56,17 +59,17 @@ def offline(series_name, season, episode, folder):
 
         # verify the result
         pprint("Done!")
-        pprint(sorted_alphanumeric(os.listdir(folder)), expand_all=True)
+        pprint(sorted_alphanumeric(os.listdir(folder_location)), expand_all=True)
         input("Enter to Exit")
     else:
         pprint("Bye!")
         input("Enter to Exit")
 
 
-def online(series_name, season, episode, folder):
+def online(series_name, season, episode, folder_location):
     import requests
 
-    file_list = sorted_alphanumeric(os.listdir(folder))
+    file_list = sorted_alphanumeric(os.listdir(folder_location))
     # Confirm and continue
     print("[bold]Files Found[/bold]")
     pprint(file_list, expand_all=True)
@@ -87,7 +90,7 @@ def online(series_name, season, episode, folder):
             if Confirm.ask("Correct?", default=True):
                 print()
                 for file in track(file_list, description="Processing"):
-                    old_name = os.path.join(folder, file)
+                    old_name = os.path.join(folder_location, file)
                     if os.path.isdir(old_name):
                         # skip directories
                         continue
@@ -105,7 +108,7 @@ def online(series_name, season, episode, folder):
                         # Adding the new name with extension
                         new_base = f"{str(episode)} - {episode_name}{file_extention}"
                         # construct full file path
-                        new_name = os.path.join(folder, new_base)
+                        new_name = os.path.join(folder_location, new_base)
 
                         try:
                             # Renaming the file
@@ -123,7 +126,9 @@ def online(series_name, season, episode, folder):
 
                 # verify the result
                 pprint("Done!")
-                pprint(sorted_alphanumeric(os.listdir(folder)), expand_all=True)
+                pprint(
+                    sorted_alphanumeric(os.listdir(folder_location)), expand_all=True
+                )
                 input("Enter to Exit")
         else:
             print("[bold red]Not Found![/bold red]")
