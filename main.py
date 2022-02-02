@@ -16,6 +16,14 @@ def sorted_alphanumeric(data):
     return sorted(data, key=alphanum_key)
 
 
+def validate_name(string: str) -> str:
+    regex = re.compile('[/:*?<>|"]')
+    if regex.search(string) == None:
+        return string
+    else:
+        return re.sub('[/:*?<>|."]', "", string)
+
+
 def get_info():
     print("Select Folder:")
     folder_location = prompter.dir()
@@ -100,7 +108,8 @@ def online(series_name, season, episode, folder_location):
                         f"https://api.tvmaze.com/shows/{show_id}/episodebynumber?season={season}&number={episode}"
                     )
                     if episode_info.status_code == 200:
-                        episode_name = episode_info.json()["name"]
+                        # get episode name and remove invaild renaming characters
+                        episode_name = validate_name(episode_info.json()["name"])
 
                         # get file extension without name
                         file_extention = os.path.splitext(file)[1]
