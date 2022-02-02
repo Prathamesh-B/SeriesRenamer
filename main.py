@@ -2,12 +2,27 @@ import os
 from rich import print
 from rich.progress import track
 from rich.pretty import pprint
-from rich.prompt import Prompt, IntPrompt
-from rich.prompt import Confirm
+from rich.prompt import Prompt, IntPrompt, Confirm
 import re
-import promptlib
+from tkinter import Tk, filedialog
 
-prompter = promptlib.Files()
+root = Tk()
+root.withdraw()  # Hides small tkinter window.
+root.attributes("-topmost", True)
+
+
+def try_again():
+    choice = IntPrompt.ask(
+        """
+1- Exit
+2- Retry
+""",
+        default=1,
+    )
+    if choice == 1:
+        pprint("Bye!")
+    elif choice == 2:
+        main()
 
 
 def sorted_alphanumeric(data):
@@ -26,7 +41,7 @@ def validate_name(string: str) -> str:
 
 def get_info():
     print("Select Folder:")
-    folder_location = prompter.dir()
+    folder_location = filedialog.askdirectory()
     series_name = Prompt.ask("Name of Series", default=folder_location)
     season = IntPrompt.ask("Season Number")
     episode = IntPrompt.ask("Episode Number", default=1)
@@ -68,10 +83,9 @@ def offline(series_name, season, episode, folder_location):
         # verify the result
         pprint("Done!")
         pprint(sorted_alphanumeric(os.listdir(folder_location)), expand_all=True)
-        input("Enter to Exit")
+        try_again()
     else:
-        pprint("Bye!")
-        input("Enter to Exit")
+        try_again()
 
 
 def online(series_name, season, episode, folder_location):
@@ -90,11 +104,13 @@ def online(series_name, season, episode, folder_location):
             show_id = search.json()["id"]
             print(f'[bold]Name:[/bold] [cyan]{search.json()["name"]}[/cyan]')
             print(
-                f'[bold]Episodes:[/bold] [cyan]{len(requests.get(f"https://api.tvmaze.com/shows/{show_id}/episodes").json())}[/cyan]'
+                f'[bold]Total Episodes:[/bold] [cyan]{len(requests.get(f"https://api.tvmaze.com/shows/{show_id}/episodes").json())}[/cyan]'
             )
-            print(f'[bold]Release:[/bold] [cyan]{search.json()["premiered"]}[/cyan]')
+            print(
+                f'[bold]Release Date:[/bold] [cyan]{search.json()["premiered"]}[/cyan]'
+            )
             print(f'[bold]Type:[/bold] [cyan]{search.json()["type"]}[/cyan]')
-            print(f'[bold]Lang:[/bold] [cyan]{search.json()["language"]}[/cyan]')
+            print(f'[bold]Language:[/bold] [cyan]{search.json()["language"]}[/cyan]')
             if Confirm.ask("Correct?", default=True):
                 print()
                 for file in track(file_list, description="Processing"):
@@ -138,15 +154,15 @@ def online(series_name, season, episode, folder_location):
                 pprint(
                     sorted_alphanumeric(os.listdir(folder_location)), expand_all=True
                 )
-                input("Enter to Exit")
+                try_again()
         else:
-            print("[bold red]Not Found![/bold red]")
+            print("[bold red]Show Not Found![/bold red]")
+            try_again()
     else:
-        pprint("Bye!")
-        input("Enter to Exit")
+        try_again()
 
 
-if __name__ == "__main__":
+def main():
     choice = Prompt.ask(
         "How you want to continue?", choices=["offline", "online"], default="offline"
     )
@@ -154,3 +170,7 @@ if __name__ == "__main__":
         offline(*get_info())
     elif choice == "online":
         online(*get_info())
+
+
+if __name__ == "__main__":
+    main()
