@@ -1,5 +1,5 @@
-from msilib.schema import Error
 import os
+import requests
 from rich import print
 from rich.progress import track
 from rich.pretty import pprint
@@ -10,20 +10,6 @@ from tkinter import Tk, filedialog
 root = Tk()
 root.withdraw()  # Hides small tkinter window.
 root.attributes("-topmost", True)
-
-
-def try_again():
-    choice = IntPrompt.ask(
-        """
-1- Exit
-2- Retry
-""",
-        default=1,
-    )
-    if choice == 1:
-        pprint("Bye!")
-    elif choice == 2:
-        main()
 
 
 def sorted_alphanumeric(data):
@@ -47,6 +33,12 @@ def get_info():
     season = IntPrompt.ask("Season Number")
     episode = IntPrompt.ask("Episode Number", default=1)
     return series_name, season, episode, folder_location
+
+
+def check_ep(show_id,season,episode,):
+    data = requests.get(f"https://api.tvmaze.com/shows/{show_id}/seasons")
+    if data.status_code == 200:
+        pass
 
 
 def offline(series_name, season, episode, folder_location):
@@ -90,8 +82,6 @@ def offline(series_name, season, episode, folder_location):
 
 
 def online(series_name, season, episode, folder_location):
-    import requests
-
     file_list = sorted_alphanumeric(os.listdir(folder_location))
     # Confirm and continue
     print("[bold]Files Found[/bold]")
@@ -99,23 +89,16 @@ def online(series_name, season, episode, folder_location):
     if Confirm.ask("Correct?", default=True):
         print()
         try:
-            search = requests.get(
-                f"https://api.tvmaze.com/singlesearch/shows?q={series_name}"
-            )
+            search = requests.get(f"https://api.tvmaze.com/singlesearch/shows?q={series_name}&=seasons")
 
             if search.status_code == 200:
                 show_id = search.json()["id"]
                 print(f'[bold]Name:[/bold] [cyan]{search.json()["name"]}[/cyan]')
-                print(
-                    f'[bold]Total Episodes:[/bold] [cyan]{len(requests.get(f"https://api.tvmaze.com/shows/{show_id}/episodes").json())}[/cyan]'
-                )
-                print(
-                    f'[bold]Release Date:[/bold] [cyan]{search.json()["premiered"]}[/cyan]'
-                )
+                print(f'[bold]Total Episodes:[/bold] [cyan]{len(requests.get(f"https://api.tvmaze.com/shows/{show_id}/episodes").json())}[/cyan]')
+                print(f'[bold]Seasons:[/bold] [cyan]{len(search.json()["_embedded"]["seasons"])}[/cyan]')
+                print(f'[bold]Release Date:[/bold] [cyan]{search.json()["premiered"]}[/cyan]')
                 print(f'[bold]Type:[/bold] [cyan]{search.json()["type"]}[/cyan]')
-                print(
-                    f'[bold]Language:[/bold] [cyan]{search.json()["language"]}[/cyan]'
-                )
+                print(f'[bold]Language:[/bold] [cyan]{search.json()["language"]}[/cyan]')
                 if Confirm.ask("Correct?", default=True):
                     print()
                     for file in track(file_list, description="Processing"):
@@ -125,9 +108,7 @@ def online(series_name, season, episode, folder_location):
                             continue
 
                         # get episode info
-                        episode_info = requests.get(
-                            f"https://api.tvmaze.com/shows/{show_id}/episodebynumber?season={season}&number={episode}"
-                        )
+                        episode_info = requests.get(f"https://api.tvmaze.com/shows/{show_id}/episodebynumber?season={season}&number={episode}")
                         if episode_info.status_code == 200:
                             # get episode name and remove invaild renaming characters
                             episode_name = validate_name(episode_info.json()["name"])
@@ -163,6 +144,8 @@ def online(series_name, season, episode, folder_location):
                         expand_all=True,
                     )
                     try_again()
+                else:
+                    try_again()
             else:
                 print("[bold red]Show Not Found![/bold red]")
                 try_again()
@@ -174,13 +157,23 @@ def online(series_name, season, episode, folder_location):
 
 
 def main():
-    choice = Prompt.ask(
-        "How you want to continue?", choices=["offline", "online"], default="offline"
-    )
+    choice = Prompt.ask("How you want to continue?", choices=["offline", "online"], default="offline")
     if choice == "offline":
         offline(*get_info())
     elif choice == "online":
         online(*get_info())
+
+
+def try_again():
+    choice = IntPrompt.ask(
+        """
+1- Exit
+2- Retry
+""",default=1,)
+    if choice == 1:
+        pprint("Bye!")
+    elif choice == 2:
+        main()
 
 
 if __name__ == "__main__":
