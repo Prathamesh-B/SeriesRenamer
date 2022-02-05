@@ -34,11 +34,30 @@ def get_info():
     episode = IntPrompt.ask("Episode Number", default=1)
     return series_name, season, episode, folder_location
 
+def check_show(show,season):
+    # Check show exist 
+    if len(show.json()["_embedded"]["seasons"]) < season:
+        print(f'[bold red]Season {season} Not Found[/bold red]')
+        try_again()
 
-def check_ep(show_id,season,episode,):
-    data = requests.get(f"https://api.tvmaze.com/shows/{show_id}/seasons")
-    if data.status_code == 200:
-        pass
+
+def check_ep(show,season,episode):
+    # Check episodes exist and match no. of files
+    index=1
+    for i in show.json()["_embedded"]["seasons"]:
+        if index == season:
+                total_ep = i["episodeOrder"]
+                
+                if total_ep == None:
+                    print("[bold red]Eposide Names Not Found[/bold red]")
+                    try_again()
+                elif total_ep != episode:
+                    print(f'Season {season} Toatal Eposides {total_ep}')
+                    print(f'Total Files in Folder {episode}')
+                    print("[bold red]Season Total Eposides is !=  Total Files in Folder[/bold red]")
+                else:
+                    print(f'[bold]Season {season} Toatal Eposides {total_ep}[/bold]')
+        index+=1
 
 
 def offline(series_name, season, episode, folder_location):
@@ -89,8 +108,10 @@ def online(series_name, season, episode, folder_location):
     if Confirm.ask("Correct?", default=True):
         print()
         try:
-            search = requests.get(f"https://api.tvmaze.com/singlesearch/shows?q={series_name}&=seasons")
-
+            if series_name.isnumeric():
+                search = requests.get(f'https://api.tvmaze.com/shows/{series_name}?embed=seasons')
+            else:
+                search = requests.get(f"https://api.tvmaze.com/singlesearch/shows?q={series_name}&embed=seasons")
             if search.status_code == 200:
                 show_id = search.json()["id"]
                 print(f'[bold]Name:[/bold] [cyan]{search.json()["name"]}[/cyan]')
@@ -99,6 +120,8 @@ def online(series_name, season, episode, folder_location):
                 print(f'[bold]Release Date:[/bold] [cyan]{search.json()["premiered"]}[/cyan]')
                 print(f'[bold]Type:[/bold] [cyan]{search.json()["type"]}[/cyan]')
                 print(f'[bold]Language:[/bold] [cyan]{search.json()["language"]}[/cyan]')
+                check_show(search,season) # Check show exist 
+                check_ep(search,season,len(file_list)) # Check episodes exist and match no. of files
                 if Confirm.ask("Correct?", default=True):
                     print()
                     for file in track(file_list, description="Processing"):
