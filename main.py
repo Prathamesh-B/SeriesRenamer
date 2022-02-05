@@ -6,6 +6,8 @@ from rich.pretty import pprint
 from rich.prompt import Prompt, IntPrompt, Confirm
 import re
 from tkinter import Tk, filedialog
+import ascii_magic
+import ssl
 
 root = Tk()
 root.withdraw()  # Hides small tkinter window.
@@ -29,7 +31,7 @@ def validate_name(string: str) -> str:
 def get_info():
     print("Select Folder:")
     folder_location = filedialog.askdirectory()
-    series_name = Prompt.ask("Name of Series", default=folder_location)
+    series_name = Prompt.ask("Name of Series", default=folder_location.split("/")[-1])
     season = IntPrompt.ask("Season Number")
     episode = IntPrompt.ask("Episode Number", default=1)
     return series_name, season, episode, folder_location
@@ -49,14 +51,13 @@ def check_ep(show,season,episode):
                 total_ep = i["episodeOrder"]
                 
                 if total_ep == None:
-                    print("[bold red]Eposide Names Not Found[/bold red]")
-                    try_again()
+                    print("[bold yellow]Episodes names may not be available[/bold yellow]")
                 elif total_ep != episode:
-                    print(f'Season {season} Toatal Eposides {total_ep}')
+                    print(f'Season {season} Toatal Episodes {total_ep}')
                     print(f'Total Files in Folder {episode}')
-                    print("[bold red]Season Total Eposides is !=  Total Files in Folder[/bold red]")
+                    print("[bold yellow]Warning! Total Episodes is !=  Total Files in Folder[/bold yellow]")
                 else:
-                    print(f'[bold]Season {season} Toatal Eposides {total_ep}[/bold]')
+                    print(f'Season {season} Toatal Episodes {total_ep}')
         index+=1
 
 
@@ -114,6 +115,11 @@ def online(series_name, season, episode, folder_location):
                 search = requests.get(f"https://api.tvmaze.com/singlesearch/shows?q={series_name}&embed=seasons")
             if search.status_code == 200:
                 show_id = search.json()["id"]
+                image = search.json()["image"]
+                if image != None:
+                    ssl._create_default_https_context = ssl._create_unverified_context
+                    my_art = ascii_magic.from_url(image["original"], columns=os.get_terminal_size()[0]-1)
+                    ascii_magic.to_terminal(my_art)
                 print(f'[bold]Name:[/bold] [cyan]{search.json()["name"]}[/cyan]')
                 print(f'[bold]Total Episodes:[/bold] [cyan]{len(requests.get(f"https://api.tvmaze.com/shows/{show_id}/episodes").json())}[/cyan]')
                 print(f'[bold]Seasons:[/bold] [cyan]{len(search.json()["_embedded"]["seasons"])}[/cyan]')
